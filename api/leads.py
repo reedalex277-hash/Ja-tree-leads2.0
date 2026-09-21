@@ -97,6 +97,9 @@ class handler(BaseHTTPRequestHandler):
                 name = display_name.get("text", "Unknown business")
 
                 results.append(
+    {               
+                     
+                
                     {
                         "name": name,
                         "address": place.get(
