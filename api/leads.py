@@ -1,24 +1,12 @@
 from http.server import BaseHTTPRequestHandler
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
 
 
-USER_AGENT = "JA-Local-Lead-Hunter/1.0"
-
-
-def fetch_json(url):
-    request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": USER_AGENT,
-            "Accept": "application/json",
-        },
-    )
-
-    with urllib.request.urlopen(request, timeout=20) as response:
-        return json.loads(response.read().decode("utf-8"))
+GOOGLE_URL = "https://places.googleapis.com/v1/places:searchText"
 
 
 class handler(BaseHTTPRequestHandler):
@@ -43,68 +31,92 @@ class handler(BaseHTTPRequestHandler):
                 400,
             )
 
-        query = urllib.parse.urlencode(
+        api_key = os.environ.get("GOOGLE_PLACES_API_KEY")
+
+        if not api_key:
+            return self.send_json(
+                {
+                    "success": False,
+                    "error": (
+                        "GOOGLE_PLACES_API_KEY is not configured "
+                        "in Vercel."
+                    ),
+                },
+                500,
+            )
+
+        request_body = json.dumps(
             {
-                "q": f"{service}, {location}",
-                "format": "jsonv2",
-                "addressdetails": 1,
-                "extratags": 1,
-                "namedetails": 1,
-                "countrycodes": "us",
-                "limit": 20,
+                "textQuery": f"{service} near {location}",
+                "pageSize": 20,
+                "languageCode": "en",
+                "regionCode": "US",
             }
+        ).encode("utf-8")
+
+        field_mask = ",".join(
+            [
+                "places.id",
+                "places.displayName",
+                "places.formattedAddress",
+                "places.nationalPhoneNumber",
+                "places.rating",
+                "places.userRatingCount",
+                "places.websiteUri",
+                "places.googleMapsUri",
+                "places.businessStatus",
+            ]
+        )
+
+        request = urllib.request.Request(
+            GOOGLE_URL,
+            data=request_body,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": field_mask,
+            },
         )
 
         try:
-            places = fetch_json(
-                "https://nominatim.openstreetmap.org/search?"
-                + query
-            )
+            with urllib.request.urlopen(
+                request, timeout=20
+            ) as response:
+                payload = json.loads(
+                    response.read().decode("utf-8")
+                )
 
             results = []
-            seen = set()
 
-            for place in places:
-                extra = place.get("extratags") or {}
-                names = place.get("namedetails") or {}
-
-                name = (
-                    names.get("name")
-                    or str(place.get("display_name", "")).split(",")[0]
-                )
-
-                if not name or name.casefold() in seen:
+            for place in payload.get("places", []):
+                if place.get("businessStatus") == "CLOSED_PERMANENTLY":
                     continue
 
-                seen.add(name.casefold())
-
-                osm_type = place.get("osm_type", "node")
-                osm_id = place.get("osm_id")
-
-                website = (
-                    extra.get("contact:website")
-                    or extra.get("website")
-                    or f"https://www.openstreetmap.org/"
-                    f"{osm_type}/{osm_id}"
-                )
-
-                phone = (
-                    extra.get("contact:phone")
-                    or extra.get("phone")
-                    or ""
-                )
+                display_name = place.get("displayName") or {}
+                name = display_name.get("text", "Unknown business")
 
                 results.append(
                     {
                         "name": name,
                         "address": place.get(
-                            "display_name",
+                            "formattedAddress",
                             "Address unavailable",
                         ),
-                        "phone": phone,
-                        "rating": None,
-                        "review_count": 0,
-                        "url": website,
+                        "phone": place.get(
+                            "nationalPhoneNumber",
+                            "",
+                        ),
+                        "rating": place.get("rating"),
+                        "review_count": place.get(
+                            "userRatingCount",
+                            0,
+                        ),
+                        "url": (
+                            place.get("websiteUri")
+                            or place.get("googleMapsUri")
+                            or ""
+                        ),
                     }
                 )
 
@@ -113,26 +125,30 @@ class handler(BaseHTTPRequestHandler):
                     "success": True,
                     "location": location,
                     "service": service,
-                    "provider": "OpenStreetMap",
+                    "provider": "Google Places",
                     "results": results,
                 }
             )
 
         except urllib.error.HTTPError as error:
-            if error.code == 429:
+            if error.code in (401, 403):
                 message = (
-                    "The free map search is busy. "
-                    "Wait a minute and try again."
+                    "Google rejected the API key. Make sure "
+                    "Places API (New) and billing are enabled."
+                )
+            elif error.code == 429:
+                message = (
+                    "The Google Places search limit was reached. "
+                    "Please try again later."
                 )
             else:
                 message = (
-                    "The local business search is "
-                    "temporarily unavailable."
+                    "Google Places could not complete the search."
                 )
 
             return self.send_json(
                 {"success": False, "error": message},
-                502,
+                error.code,
             )
 
         except Exception:
@@ -140,8 +156,8 @@ class handler(BaseHTTPRequestHandler):
                 {
                     "success": False,
                     "error": (
-                        "The local business search is "
-                        "temporarily unavailable."
+                        "The business search is temporarily "
+                        "unavailable."
                     ),
                 },
                 502,
