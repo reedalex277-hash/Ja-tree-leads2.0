@@ -63,7 +63,7 @@ class handler(BaseHTTPRequestHandler):
                 "places.rating",
                 "places.userRatingCount",
                 "places.websiteUri",
-                "places.googleMapsUri",
+                
                 "places.businessStatus",
             ]
         )
@@ -113,11 +113,12 @@ class handler(BaseHTTPRequestHandler):
                             0,
                         ),
                         "url": (
-                            place.get("websiteUri")
-                            or place.get("googleMapsUri")
-                            or ""
-                        ),
-                    }
+    place.get("websiteUri")
+    or (
+        "https://www.google.com/maps/place/?q=place_id:"
+        + place.get("id", "")
+    )
+),
                 )
 
             return self.send_json(
