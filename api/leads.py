@@ -1,5 +1,5 @@
 from http.server import BaseHTTPRequestHandler
-import json
+import js
 import os
 import urllib.error
 import urllib.parse
