@@ -96,10 +96,7 @@ class handler(BaseHTTPRequestHandler):
                 display_name = place.get("displayName") or {}
                 name = display_name.get("text", "Unknown business")
 
-                results.append(
-    {               
-                     
-                
+                                results.append(
                     {
                         "name": name,
                         "address": place.get(
@@ -116,14 +113,14 @@ class handler(BaseHTTPRequestHandler):
                             0,
                         ),
                         "url": (
-    place.get("websiteUri")
-    or (
-        "https://www.google.com/maps/place/?q=place_id:"
-        + place.get("id", "")
-    )
-),
-                )
-
+                            place.get("websiteUri")
+                            or (
+                                "https://www.google.com/maps/place/?q=place_id:"
+                                + place.get("id", "")
+                            )
+                        ),
+                    }
+                                )
             return self.send_json(
                 {
                     "success": True,
