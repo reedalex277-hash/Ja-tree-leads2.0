@@ -143,8 +143,9 @@ class handler(BaseHTTPRequestHandler):
                     "Please try again later."
                 )
             else:
-                message = (
-                    "Google Places could not complete the search."
+    message = f"Google Places error HTTP {error.code}."
+                
+            
                 )
 
             return self.send_json(
