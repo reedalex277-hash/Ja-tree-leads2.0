@@ -38,8 +38,7 @@ class handler(BaseHTTPRequestHandler):
                 {
                     "success": False,
                     "error": (
-                        "GOOGLE_PLACES_API_KEY is not configured "
-                        "in Vercel."
+                        "GOOGLE_PLACES_API_KEY is not configured in Vercel."
                     ),
                 },
                 500,
@@ -63,7 +62,6 @@ class handler(BaseHTTPRequestHandler):
                 "places.rating",
                 "places.userRatingCount",
                 "places.websiteUri",
-                
                 "places.businessStatus",
             ]
         )
@@ -90,13 +88,17 @@ class handler(BaseHTTPRequestHandler):
             results = []
 
             for place in payload.get("places", []):
-                if place.get("businessStatus") == "CLOSED_PERMANENTLY":
+                if place.get(
+                    "businessStatus"
+                ) == "CLOSED_PERMANENTLY":
                     continue
 
                 display_name = place.get("displayName") or {}
-                name = display_name.get("text", "Unknown business")
+                name = display_name.get(
+                    "text", "Unknown business"
+                )
 
-                                results.append(
+                results.append(
                     {
                         "name": name,
                         "address": place.get(
@@ -104,23 +106,21 @@ class handler(BaseHTTPRequestHandler):
                             "Address unavailable",
                         ),
                         "phone": place.get(
-                            "nationalPhoneNumber",
-                            "",
+                            "nationalPhoneNumber", ""
                         ),
                         "rating": place.get("rating"),
                         "review_count": place.get(
-                            "userRatingCount",
-                            0,
+                            "userRatingCount", 0
                         ),
-                        "url": (
-                            place.get("websiteUri")
-                            or (
-                                "https://www.google.com/maps/place/?q=place_id:"
-                                + place.get("id", "")
-                            )
+                        "url": place.get("websiteUri")
+                        or (
+                            "https://www.google.com/maps/place/"
+                            "?q=place_id:"
+                            + place.get("id", "")
                         ),
                     }
-                                )
+                )
+
             return self.send_json(
                 {
                     "success": True,
@@ -148,7 +148,10 @@ class handler(BaseHTTPRequestHandler):
                 )
 
             return self.send_json(
-                {"success": False, "error": message},
+                {
+                    "success": False,
+                    "error": message,
+                },
                 error.code,
             )
 
@@ -157,8 +160,7 @@ class handler(BaseHTTPRequestHandler):
                 {
                     "success": False,
                     "error": (
-                        "The business search is temporarily "
-                        "unavailable."
+                        "The business search is temporarily unavailable."
                     ),
                 },
                 502,
