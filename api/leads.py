@@ -137,12 +137,12 @@ class handler(BaseHTTPRequestHandler):
                     "Google rejected the API key. Make sure "
                     "Places API (New) and billing are enabled."
                 )
-            elif error.code == 429:
+                        elif error.code == 429:
                 message = (
                     "The Google Places search limit was reached. "
                     "Please try again later."
                 )
-                        else:
+            else:
                 message = f"Google Places error HTTP {error.code}."
 
             return self.send_json(
