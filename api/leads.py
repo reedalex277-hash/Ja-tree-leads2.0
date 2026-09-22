@@ -142,11 +142,8 @@ class handler(BaseHTTPRequestHandler):
                     "The Google Places search limit was reached. "
                     "Please try again later."
                 )
-            else:
-    message = f"Google Places error HTTP {error.code}."
-                
-            
-                )
+                        else:
+                message = f"Google Places error HTTP {error.code}."
 
             return self.send_json(
                 {
