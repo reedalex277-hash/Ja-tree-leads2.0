@@ -143,7 +143,7 @@ class handler(BaseHTTPRequestHandler):
                     "Please try again later."
                 )
             else:
-                message = f"Google Places error HTTP {error.code}."      
+                message = f"Google HTTP {error.code}: {error.read().decode('utf-8')[:300]}"    
 
             return self.send_json(
                 {
