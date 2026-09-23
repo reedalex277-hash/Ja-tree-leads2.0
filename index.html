@@ -15,6 +15,7 @@
     button:disabled{opacity:.6;cursor:wait}#status{min-height:24px;color:var(--muted);margin:18px 0 8px}.error{color:#ff9b9b!important}
     .results{display:grid;gap:12px}.lead{border:1px solid var(--line);border-radius:14px;padding:16px;background:#101712}
     .lead h2{font-size:1.12rem;margin:0 0 8px}.lead p{margin:5px 0;color:var(--muted)}.lead a{color:var(--green)}
+    .lead-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.copy-script{min-height:40px;padding:8px 12px;border-radius:9px;background:var(--green);color:#071008}
     @media(max-width:720px){form{grid-template-columns:1fr}main{margin-top:24px}}
   </style>
 </head>
@@ -48,18 +49,30 @@
   const statusEl=document.querySelector('#status');
   const resultsEl=document.querySelector('#results');
   const button=document.querySelector('#submit');
+  let currentResults=[];
   const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const copyText=async(text)=>{
+    if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return;}
+    const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();
+  };
   form.addEventListener('submit',async(event)=>{
     event.preventDefault();button.disabled=true;resultsEl.innerHTML='';statusEl.className='';statusEl.textContent='Searching nearby businesses…';
     const params=new URLSearchParams(new FormData(form));
     try{
       const response=await fetch(`/api/leads?${params}`);const data=await response.json();
       if(!response.ok||!data.success)throw new Error(data.error||'The search could not be completed.');
+      currentResults=data.results||[];
       statusEl.textContent=`Found ${data.results.length} possible business leads.`;
       if(!data.results.length){resultsEl.innerHTML='<p>No results found. Try a nearby city or another business type.</p>';return;}
-      resultsEl.innerHTML=data.results.map(lead=>`<article class="lead"><h2>${escapeHtml(lead.name)}</h2><p>${escapeHtml(lead.address||'Address unavailable')}</p><p>Rating: ${escapeHtml(lead.rating??'N/A')} · Reviews: ${escapeHtml(lead.review_count??0)}</p>${lead.phone?`<p><a href="tel:${escapeHtml(lead.phone)}">${escapeHtml(lead.phone)}</a></p>`:''}${lead.url?`<a href="${escapeHtml(lead.url)}" target="_blank" rel="noopener">View business</a>`:''}</article>`).join('');
+      resultsEl.innerHTML=data.results.map((lead,index)=>`<article class="lead"><h2>${escapeHtml(lead.name)}</h2><p>${escapeHtml(lead.address||'Address unavailable')}</p><p>Rating: ${escapeHtml(lead.rating??'N/A')} · Reviews: ${escapeHtml(lead.review_count??0)}</p>${lead.phone?`<p><a href="tel:${escapeHtml(lead.phone)}">${escapeHtml(lead.phone)}</a></p>`:''}<div class="lead-actions">${lead.url?`<a href="${escapeHtml(lead.url)}" target="_blank" rel="noopener">View business</a>`:''}<button class="copy-script" type="button" data-lead-index="${index}">Copy call opener</button></div></article>`).join('');
     }catch(error){statusEl.className='error';statusEl.textContent=error.message;}
     finally{button.disabled=false;}
+  });
+  resultsEl.addEventListener('click',async(event)=>{
+    const copyButton=event.target.closest('.copy-script');if(!copyButton)return;
+    const lead=currentResults[Number(copyButton.dataset.leadIndex)];if(!lead)return;
+    const script=`Hi, this is Alex with J&A Tree and Lawn Service. I'm reaching out because we help local organizations with tree removal, trimming, storm cleanup, and ongoing property maintenance. I wanted to ask who handles tree and grounds work for ${lead.name}, and whether you'd be open to keeping our information on file for estimates or emergency service?`;
+    try{await copyText(script);copyButton.textContent='Copied';setTimeout(()=>{copyButton.textContent='Copy call opener';},1600);}catch{statusEl.className='error';statusEl.textContent='Could not copy the call opener.';}
   });
 </script>
 </body>
