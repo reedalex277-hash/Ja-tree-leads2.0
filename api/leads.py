@@ -100,6 +100,7 @@ class handler(BaseHTTPRequestHandler):
 
                 results.append(
                     {
+                        "id": place.get("id", ""),
                         "name": name,
                         "address": place.get(
                             "formattedAddress",
@@ -175,3 +176,4 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+        
