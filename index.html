@@ -3,77 +3,227 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>J&amp;A Local B2B Lead Hunter</title>
-  <style>
-    :root{color-scheme:dark;--green:#76d275;--panel:#172019;--line:#324438;--muted:#b8c5bb}
-    *{box-sizing:border-box}body{margin:0;background:#0b100c;color:#f5f7f5;font-family:system-ui,-apple-system,sans-serif}
-    main{width:min(920px,calc(100% - 28px));margin:40px auto}h1{margin-bottom:8px;font-size:clamp(1.8rem,6vw,3rem)}
-    .intro{color:var(--muted);margin-top:0}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px}
-    form{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}label{display:grid;gap:7px;font-weight:700}
-    input,select,button{min-height:48px;border-radius:10px;border:1px solid var(--line);font:inherit;padding:10px 12px}
-    input,select{background:#0f1611;color:white}button{background:var(--green);color:#071008;font-weight:800;border:0;cursor:pointer}
-    button:disabled{opacity:.6;cursor:wait}#status{min-height:24px;color:var(--muted);margin:18px 0 8px}.error{color:#ff9b9b!important}
-    .results{display:grid;gap:12px}.lead{border:1px solid var(--line);border-radius:14px;padding:16px;background:#101712}
-    .lead h2{font-size:1.12rem;margin:0 0 8px}.lead p{margin:5px 0;color:var(--muted)}.lead a{color:var(--green)}
-    .lead-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.copy-script{min-height:40px;padding:8px 12px;border-radius:9px;background:var(--green);color:#071008}
-    @media(max-width:720px){form{grid-template-columns:1fr}main{margin-top:24px}}
-  </style>
+  <meta name="theme-color" content="#102c20">
+  <title>J&amp;A Lead Hunter</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
-<main>
-  <h1>J&amp;A Local B2B Lead Hunter</h1>
-  <p class="intro">Find nearby organizations that may regularly need tree and lawn contractors.</p>
-  <section class="card">
-    <form id="search-form">
-      <label>Service area
-        <input id="location" name="location" value="Crossville, TN" maxlength="100" required>
+  <header class="site-header">
+    <a class="brand" href="#top">
+      <span class="brand-mark">J&amp;A</span>
+      <span>
+        <strong>Lead Hunter</strong>
+        <small>Local sales workspace</small>
+      </span>
+    </a>
+
+    <button class="nav-button" id="show-pipeline" type="button">
+      Pipeline <span id="saved-count">0</span>
+    </button>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">ONE LEAD. ONE CONTRACTOR.</p>
+
+        <h1>
+          Find the work.<br>
+          <em>Keep the follow-up.</em>
+        </h1>
+
+        <p class="intro">
+          Find local organizations that regularly need tree and grounds
+          contractors, save the best prospects, and know exactly who to
+          contact next.
+        </p>
+      </div>
+
+      <form id="search-form" class="search-card">
+        <h2>Find local prospects</h2>
+
+        <label class="field">
+          Service area
+          <input
+            id="location"
+            name="location"
+            value="Crossville, TN"
+            maxlength="100"
+            required
+          >
+        </label>
+
+        <label class="field">
+          Business type
+          <select id="service" name="service">
+            <option value="property management">Property management</option>
+            <option value="real estate agency">Real estate agencies</option>
+            <option value="general contractor">General contractors</option>
+            <option value="golf course">Golf courses and parks</option>
+            <option value="apartment complex">Apartment complexes</option>
+            <option value="homeowners association">Homeowners associations</option>
+            <option value="commercial property">Commercial properties</option>
+            <option value="church">Churches</option>
+          </select>
+        </label>
+
+        <button id="search-button" class="primary" type="submit">
+          <span>Hunt local leads</span>
+          <b>→</b>
+        </button>
+
+        <p class="form-note">
+          Searches Google Places. Prospects are private to this browser
+          unless exported.
+        </p>
+      </form>
+    </section>
+
+    <section class="dashboard" aria-label="Follow-up overview">
+      <button class="metric" data-pipeline-filter="all">
+        <span id="metric-total">0</span>
+        <small>Saved leads</small>
+      </button>
+
+      <button class="metric urgent" data-pipeline-filter="due">
+        <span id="metric-due">0</span>
+        <small>Due now</small>
+      </button>
+
+      <button class="metric" data-pipeline-filter="contacted">
+        <span id="metric-contacted">0</span>
+        <small>Contacted</small>
+      </button>
+
+      <button class="metric" data-pipeline-filter="won">
+        <span id="metric-won">0</span>
+        <small>Jobs won</small>
+      </button>
+    </section>
+
+    <section id="results-section" class="content-section" hidden>
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">SEARCH RESULTS</p>
+          <h2 id="results-title">Local prospects</h2>
+        </div>
+
+        <button
+          id="download-results"
+          class="secondary"
+          type="button"
+          hidden
+        >
+          Export CSV
+        </button>
+      </div>
+
+      <p
+        id="search-message"
+        class="message"
+        role="status"
+        aria-live="polite"
+      ></p>
+
+      <div id="results" class="results-grid"></div>
+    </section>
+
+    <section id="pipeline-section" class="content-section pipeline-section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">YOUR PIPELINE</p>
+          <h2>Follow-up board</h2>
+        </div>
+
+        <div class="toolbar">
+          <select id="pipeline-filter" aria-label="Filter saved leads">
+            <option value="all">All saved leads</option>
+            <option value="due">Due now</option>
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="quoted">Estimate sent</option>
+            <option value="won">Won</option>
+            <option value="lost">Not a fit</option>
+          </select>
+
+          <button id="export-pipeline" class="secondary" type="button">
+            Export backup
+          </button>
+        </div>
+      </div>
+
+      <p id="pipeline-message" class="message"></p>
+      <div id="pipeline" class="pipeline-list"></div>
+    </section>
+  </main>
+
+  <dialog id="lead-dialog">
+    <form id="lead-form" method="dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">LEAD DETAILS</p>
+          <h2 id="dialog-title">Update lead</h2>
+        </div>
+
+        <button class="icon-button" value="cancel" aria-label="Close">
+          ×
+        </button>
+      </div>
+
+      <input id="lead-id" type="hidden">
+
+      <div class="dialog-grid">
+        <label class="field">
+          Status
+          <select id="lead-status">
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="quoted">Estimate sent</option>
+            <option value="won">Won</option>
+            <option value="lost">Not a fit</option>
+          </select>
+        </label>
+
+        <label class="field">
+          Next follow-up
+          <input id="lead-followup" type="datetime-local">
+        </label>
+      </div>
+
+      <label class="field">
+        Contact name
+        <input
+          id="lead-contact"
+          maxlength="100"
+          placeholder="Who handles the property?"
+        >
       </label>
-      <label>Business type
-        <select id="service" name="service">
-          <option value="property management">Property management</option>
-          <option value="real estate agency">Real estate agencies</option>
-          <option value="general contractor">General contractors</option>
-          <option value="golf course">Golf courses and parks</option>
-          <option value="apartment complex">Apartment complexes</option>
-          <option value="homeowners association">Homeowners associations</option>
-        </select>
+
+      <label class="field">
+        Notes
+        <textarea
+          id="lead-notes"
+          rows="5"
+          maxlength="1000"
+          placeholder="What did they say? What happens next?"
+        ></textarea>
       </label>
-      <button id="submit" type="submit">Hunt local leads</button>
+
+      <div class="dialog-actions">
+        <button id="delete-lead" class="danger" type="button">
+          Delete lead
+        </button>
+
+        <button class="primary save-dialog" value="save">
+          Save changes
+        </button>
+      </div>
     </form>
-    <p id="status" role="status" aria-live="polite"></p>
-    <div id="results" class="results"></div>
-  </section>
-</main>
-<script>
-  const form=document.querySelector('#search-form');
-  const statusEl=document.querySelector('#status');
-  const resultsEl=document.querySelector('#results');
-  const button=document.querySelector('#submit');
-  let currentResults=[];
-  const escapeHtml=(value)=>String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
-  const copyText=async(text)=>{
-    if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return;}
-    const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();
-  };
-  form.addEventListener('submit',async(event)=>{
-    event.preventDefault();button.disabled=true;resultsEl.innerHTML='';statusEl.className='';statusEl.textContent='Searching nearby businesses…';
-    const params=new URLSearchParams(new FormData(form));
-    try{
-      const response=await fetch(`/api/leads?${params}`);const data=await response.json();
-      if(!response.ok||!data.success)throw new Error(data.error||'The search could not be completed.');
-      currentResults=data.results||[];
-      statusEl.textContent=`Found ${data.results.length} possible business leads.`;
-      if(!data.results.length){resultsEl.innerHTML='<p>No results found. Try a nearby city or another business type.</p>';return;}
-      resultsEl.innerHTML=data.results.map((lead,index)=>`<article class="lead"><h2>${escapeHtml(lead.name)}</h2><p>${escapeHtml(lead.address||'Address unavailable')}</p><p>Rating: ${escapeHtml(lead.rating??'N/A')} · Reviews: ${escapeHtml(lead.review_count??0)}</p>${lead.phone?`<p><a href="tel:${escapeHtml(lead.phone)}">${escapeHtml(lead.phone)}</a></p>`:''}<div class="lead-actions">${lead.url?`<a href="${escapeHtml(lead.url)}" target="_blank" rel="noopener">View business</a>`:''}<button class="copy-script" type="button" data-lead-index="${index}">Copy call opener</button></div></article>`).join('');
-    }catch(error){statusEl.className='error';statusEl.textContent=error.message;}
-    finally{button.disabled=false;}
-  });
-  resultsEl.addEventListener('click',async(event)=>{
-    const copyButton=event.target.closest('.copy-script');if(!copyButton)return;
-    const lead=currentResults[Number(copyButton.dataset.leadIndex)];if(!lead)return;
-    const script=`Hi, this is Alex with J&A Tree and Lawn Service. I'm reaching out because we help local organizations with tree removal, trimming, storm cleanup, and ongoing property maintenance. I wanted to ask who handles tree and grounds work for ${lead.name}, and whether you'd be open to keeping our information on file for estimates or emergency service?`;
-    try{await copyText(script);copyButton.textContent='Copied';setTimeout(()=>{copyButton.textContent='Copy call opener';},1600);}catch{statusEl.className='error';statusEl.textContent='Could not copy the call opener.';}
-  });
-</script>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="/api.js" defer></script>
 </body>
-</html>
+</html>save the best prospects, and
