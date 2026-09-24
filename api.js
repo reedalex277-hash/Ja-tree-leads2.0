@@ -363,6 +363,311 @@ function renderPipeline() {
     );
   }
 
-  list.sort((first, second) => {
+    list.sort((first, second) => {
     if (nowDue(first) !== nowDue(second)) {
-      return nowDue
+      return nowDue(first) ? -1 : 1;
+    }
+
+    return (first.followup || "9999").localeCompare(
+      second.followup || "9999"
+    );
+  });
+
+  $("#pipeline-message").textContent =
+    !leads.length
+      ? "Save a search result and it will appear here with tomorrow’s follow-up already scheduled."
+      : `${list.length} lead${
+          list.length === 1 ? "" : "s"
+        } shown${
+          filter === "due"
+            ? " — these need attention now."
+            : ""
+        }`;
+
+  $("#pipeline").innerHTML = list
+    .map((lead) => {
+      const due = nowDue(lead);
+
+      const callButton = lead.phone
+        ? `<a
+             class="action-button"
+             href="tel:${esc(lead.phone)}"
+           >
+             Call
+           </a>`
+        : "";
+
+      return `
+        <article
+          class="pipeline-card ${
+            due ? "is-due" : ""
+          }"
+          data-id="${esc(leadKey(lead))}"
+        >
+          <div class="pipeline-main">
+            <div class="pipeline-title">
+              <span class="status-pill">
+                ${esc(
+                  STATUS_LABELS[lead.status] ||
+                    lead.status
+                )}
+              </span>
+
+              ${
+                due
+                  ? `<span class="due-pill">
+                       Due now
+                     </span>`
+                  : ""
+              }
+            </div>
+
+            <h3>${esc(lead.name)}</h3>
+
+            <p>
+              ${esc(
+                lead.contact ||
+                  lead.phone ||
+                  lead.address ||
+                  "No contact details"
+              )}
+            </p>
+
+            <small>
+              Next: ${esc(
+                formatDate(lead.followup)
+              )}
+            </small>
+          </div>
+
+          <div class="pipeline-actions">
+            ${callButton}
+
+            <button
+              class="action-button"
+              data-followup-copy
+            >
+              Copy follow-up
+            </button>
+
+            <button
+              class="action-button primary-small"
+              data-edit
+            >
+              Edit
+            </button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+$("#pipeline-filter").addEventListener(
+  "change",
+  renderPipeline
+);
+
+document
+  .querySelectorAll("[data-pipeline-filter]")
+  .forEach((button) => {
+    button.addEventListener("click", () => {
+      $("#pipeline-filter").value =
+        button.dataset.pipelineFilter;
+
+      renderPipeline();
+
+      $("#pipeline-section").scrollIntoView({
+        behavior: "smooth"
+      });
+    });
+  });
+
+$("#show-pipeline").addEventListener(
+  "click",
+  () => {
+    $("#pipeline-section").scrollIntoView({
+      behavior: "smooth"
+    });
+  }
+);
+
+$("#pipeline").addEventListener(
+  "click",
+  async (event) => {
+    const card =
+      event.target.closest(".pipeline-card");
+
+    if (!card) return;
+
+    const lead = leads.find(
+      (item) =>
+        leadKey(item) === card.dataset.id
+    );
+
+    if (!lead) return;
+
+    if (
+      event.target.closest(
+        "[data-followup-copy]"
+      )
+    ) {
+      await copyText(followupMessage(lead));
+      toast("Follow-up message copied");
+      return;
+    }
+
+    if (event.target.closest("[data-edit]")) {
+      openLead(lead);
+    }
+  }
+);
+
+function openLead(lead) {
+  $("#lead-id").value = leadKey(lead);
+  $("#dialog-title").textContent = lead.name;
+  $("#lead-status").value = lead.status || "new";
+  $("#lead-contact").value = lead.contact || "";
+  $("#lead-notes").value = lead.notes || "";
+
+  $("#lead-followup").value = lead.followup
+    ? new Date(
+        new Date(lead.followup) -
+          new Date().getTimezoneOffset() * 60000
+      )
+        .toISOString()
+        .slice(0, 16)
+    : "";
+
+  $("#lead-dialog").showModal();
+}
+
+$("#lead-form").addEventListener(
+  "submit",
+  (event) => {
+    if (event.submitter?.value !== "save") {
+      return;
+    }
+
+    event.preventDefault();
+
+    const lead = leads.find(
+      (item) =>
+        leadKey(item) === $("#lead-id").value
+    );
+
+    if (!lead) return;
+
+    lead.status = $("#lead-status").value;
+    lead.contact =
+      $("#lead-contact").value.trim();
+    lead.notes =
+      $("#lead-notes").value.trim();
+
+    lead.followup = $("#lead-followup").value
+      ? new Date(
+          $("#lead-followup").value
+        ).toISOString()
+      : "";
+
+    lead.updatedAt = new Date().toISOString();
+
+    persist();
+    $("#lead-dialog").close();
+    toast("Lead updated");
+  }
+);
+
+$("#delete-lead").addEventListener(
+  "click",
+  () => {
+    const key = $("#lead-id").value;
+
+    if (
+      !confirm(
+        "Remove this lead from your pipeline?"
+      )
+    ) {
+      return;
+    }
+
+    leads = leads.filter(
+      (lead) => leadKey(lead) !== key
+    );
+
+    persist();
+    renderResults();
+    $("#lead-dialog").close();
+    toast("Lead removed");
+  }
+);
+
+function csvDownload(items, name) {
+  const fields = [
+    "name",
+    "address",
+    "phone",
+    "rating",
+    "review_count",
+    "url",
+    "status",
+    "contact",
+    "followup",
+    "notes"
+  ];
+
+  const quote = (value) =>
+    `"${String(value ?? "").replaceAll(
+      '"',
+      '""'
+    )}"`;
+
+  const csv = [
+    fields.join(","),
+    ...items.map((item) =>
+      fields
+        .map((field) => quote(item[field]))
+        .join(",")
+    )
+  ].join("\n");
+
+  const link = document.createElement("a");
+
+  link.href = URL.createObjectURL(
+    new Blob([csv], {
+      type: "text/csv"
+    })
+  );
+
+  link.download = name;
+  link.click();
+
+  URL.revokeObjectURL(link.href);
+}
+
+$("#download-results").addEventListener(
+  "click",
+  () => {
+    csvDownload(
+      searchResults,
+      `ja-search-${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`
+    );
+  }
+);
+
+$("#export-pipeline").addEventListener(
+  "click",
+  () => {
+    csvDownload(
+      leads,
+      `ja-lead-backup-${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`
+    );
+  }
+);
+
+renderDashboard();
+renderPipeline();
