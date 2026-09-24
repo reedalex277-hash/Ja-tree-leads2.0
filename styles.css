@@ -479,7 +479,61 @@ dialog::backdrop {
 
 .danger {
   border: 0;
-  color: var(--red);
+  color: var(--red);@media (max-width: 800px) {
+  .results-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .pipeline-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 560px) {
+  .site-header {
+    padding-inline: 14px;
+  }
+
+  .hero {
+    padding: 42px 16px;
+  }
+
+  .hero h1 {
+    font-size: 40px;
+  }
+
+  .content-section {
+    padding: 48px 15px 60px;
+  }
+
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .toolbar {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .secondary {
+    width: 100%;
+  }
+
+  .pipeline-actions {
+    width: 100%;
+  }
+
+  .action-button {
+    flex: 1;
+    text-align: center;
+  }
+}
   background: transparent;
   font-weight: 800;
 }
