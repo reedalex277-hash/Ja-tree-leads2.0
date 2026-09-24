@@ -479,18 +479,48 @@ dialog::backdrop {
 
 .danger {
   border: 0;
-  color: var(--red);@media (max-width: 800px) {
-  .results-grid {
-    grid-template-columns: 1fr !important;
+  color: var(--red);
+  background: transparent;
+  font-weight: 800;
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 20;
+  padding: 13px 17px;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--forest);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: 0.2s;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: none;
+}
+
+@media (max-width: 800px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: auto;
+    padding-top: 48px;
   }
 
-  .dashboard {
-    grid-template-columns: repeat(2, 1fr);
+  .results-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .pipeline-card {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .dashboard {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -525,6 +555,18 @@ dialog::backdrop {
     width: 100%;
   }
 
+  .dialog-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dialog-actions {
+    flex-direction: column-reverse;
+  }
+
+  .save-dialog {
+    width: 100%;
+  }
+
   .pipeline-actions {
     width: 100%;
   }
@@ -534,12 +576,3 @@ dialog::backdrop {
     text-align: center;
   }
 }
-  background: transparent;
-  font-weight: 800;
-}
-
-.toast {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  z-index: 20;
