@@ -5,6 +5,7 @@ import re
 import uuid
 import urllib.request
 import urllib.error
+import logging
 
 SERVICES = {"Tree removal", "Tree pruning", "Storm cleanup", "Lawn and grounds care", "Other"}
 TIMINGS = {"As soon as possible", "Within two weeks", "Within a month", "Just planning"}
@@ -41,6 +42,34 @@ def validate(data):
     row["source"] = "customer_form"
     return row
 
+
+def send_alert(row):
+    key = os.environ.get("RESEND_API_KEY", "").strip()
+    if not key:
+        logging.warning("Customer alert not configured; request is saved.")
+        return
+    fields = ("name", "phone", "email", "address", "city", "zip", "service", "timing", "description")
+    text = "New J&A estimate request\n\n" + "\n".join(
+        field.title() + ": " + row[field] for field in fields
+    ) + "\n\nReference: " + row["id"]
+    payload = {
+        "from": os.environ.get("ALERT_FROM_EMAIL", "J&A Lead Hunter <onboarding@resend.dev>"),
+        "to": ["reedalex745@gmail.com"],
+        "subject": "New J&A estimate request",
+        "text": text,
+    }
+    if row["email"]:
+        payload["reply_to"] = row["email"]
+    request = urllib.request.Request(
+        "https://api.resend.com/emails", data=json.dumps(payload).encode(), method="POST",
+        headers={"Authorization": "Bearer " + key, "Content-Type": "application/json",
+                 "User-Agent": "JA-Lead-Hunter/1.0", "Idempotency-Key": "customer-request-" + row["id"]})
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            response.read()
+    except (urllib.error.URLError, TimeoutError):
+        logging.warning("Customer alert failed; request is saved. Reference: %s", row["id"])
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
@@ -58,12 +87,14 @@ class handler(BaseHTTPRequestHandler):
             return self.send_json({"error":"The request form is not connected yet. Please try again later."}, 503)
         request = urllib.request.Request(
             url + "/rest/v1/customer_requests?on_conflict=id", data=json.dumps(row).encode(), method="POST",
-            headers={"apikey":key, "Authorization":"Bearer " + key, "Content-Type":"application/json", "Prefer":"resolution=ignore-duplicates,return=minimal"})
+            headers={"apikey":key, "Authorization":"Bearer " + key, "Content-Type":"application/json", "Prefer":"resolution=ignore-duplicates,return=representation"})
         try:
             with urllib.request.urlopen(request, timeout=15) as response:
-                response.read()
+                inserted = json.loads(response.read())
         except (urllib.error.URLError, TimeoutError):
             return self.send_json({"error":"We could not confirm your request. Please try again; your details are still in the form."}, 502)
+        if inserted:
+            send_alert(inserted[0])
         return self.send_json({"success":True, "request_id":row["id"]}, 201)
 
     def send_json(self, payload, status):
@@ -74,3 +105,4 @@ class handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+                         
